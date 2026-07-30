@@ -12,9 +12,9 @@ REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "60"))
 _OPEN_BADGE = {True: "🟢 Abierta ahora", False: "🔴 Cerrada ahora"}
 
 _EXAMPLES = [
-    "Café tranquilo con wifi cerca de la Giralda, Sevilla",
-    "Sitio con enchufes para trabajar en Malasaña, Madrid",
-    "Un flat white de especialidad abierto ahora en Gràcia",
+    "Café tranquilo con wifi en Ixelles, Bruselas",
+    "Un espresso de especialidad cerca de la Giralda, Sevilla",
+    "Un flat white abierto ahora en el Born, Barcelona",
 ]
 
 st.set_page_config(page_title="MoodBrew", page_icon="☕", layout="centered")
@@ -25,6 +25,8 @@ def _badges(candidate: dict, shop: dict) -> str:
     distance = candidate.get("distance_m")
     if distance is not None:
         parts.append(f"📍 a unos {round(distance)} m")
+    if shop.get("is_coffee_shop"):
+        parts.append("☕ Especialidad")
     if shop.get("has_wifi"):
         parts.append("📶 Wifi")
     return " · ".join(parts)
@@ -122,7 +124,14 @@ with st.form("buscar"):
     query = st.text_input(
         "¿Qué buscas?",
         key="query_input",
-        placeholder="p.ej. estoy en la Giralda de Sevilla, un café tranquilo con wifi",
+        placeholder="Indica siempre la ciudad + un punto exacto. Ej.: café con wifi cerca de la Giralda, Sevilla",
+        help=(
+            "Para acertar necesito **la ciudad** y un **punto lo más concreto posible**: "
+            "barrio, monumento, plaza o calle.\n\n"
+            "✅ «Ixelles, Bruselas» · «cerca de la Giralda, Sevilla» · «el Born, Barcelona»\n\n"
+            "⚠️ Evita nombres sueltos y ambiguos («Centro», «Gràcia»): sin ciudad puedo "
+            "geolocalizar mal la búsqueda."
+        ),
     )
     submitted = st.form_submit_button(
         "Recomiéndame ☕", type="primary", use_container_width=True
