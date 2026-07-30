@@ -3,6 +3,21 @@
 Recomendador de cafeterias de especialidad basado en un pipeline multiagente
 secuencial (intencion → busqueda/validacion → curacion).
 
+## Limitaciones conocidas (MVP)
+
+Los datos provienen de OpenStreetMap (via Geoapify), que **no incluye ratings ni
+reseñas**. Por eso:
+
+- Se filtra por la categoria `catering.cafe.coffee_shop` (mejor proxy objetivo de
+  "especialidad") y se excluyen cadenas comerciales. Funciona bien en zonas urbanas
+  bien mapeadas; en pueblos con OSM pobre puede no encontrar nada.
+- No es posible **ordenar por calidad** ni garantizar que sean las "mejores" (como
+  hace Google con sus resenas). El ranking es por cercania.
+
+Igualar la calidad de Google requeriria una fuente con ratings (Google Places /
+Foursquare, de pago) o un directorio de especialidad curado. Queda como trabajo
+futuro (fase de value-add).
+
 ## Estructura
 
 ```text

@@ -28,13 +28,15 @@ async def test_curate_elige_y_razona(monkeypatch):
     assert recs[1].candidate.shop.name == "C"
 
 
-async def test_curate_clampa_a_3(monkeypatch):
+async def test_curate_clampa_a_5(monkeypatch):
+    candidates = [_candidate(str(i), i * 100) for i in range(7)]
+
     async def fake_chat_json(messages, schema, name):
-        return {"selections": [{"index": i, "reasoning": "x"} for i in range(3)] + [{"index": 0, "reasoning": "extra"}]}
+        return {"selections": [{"index": i, "reasoning": "x"} for i in range(7)]}
 
     monkeypatch.setattr(curator_agent, "chat_json", fake_chat_json)
-    recs = await curator_agent.curate("q", _CANDIDATES)
-    assert len(recs) == 3
+    recs = await curator_agent.curate("q", candidates)
+    assert len(recs) == 5
 
 
 async def test_curate_ignora_indices_invalidos(monkeypatch):

@@ -1,4 +1,9 @@
-from app.services.maps_client import GeoapifyPlace, _is_commodity_chain, _parse_place
+from app.services.maps_client import (
+    GeoapifyPlace,
+    _is_bakery,
+    _is_commodity_chain,
+    _parse_place,
+)
 
 
 def test_parse_place_completo():
@@ -44,3 +49,18 @@ def test_is_commodity_chain_por_brand():
 def test_especialidad_no_es_cadena():
     feature = {"properties": {"name": "Toma Cafe", "datasource": {"raw": {}}}}
     assert _is_commodity_chain(feature) is False
+
+
+def test_is_bakery_por_shop():
+    feature = {"properties": {"name": "Santa Gloria", "datasource": {"raw": {"shop": "bakery"}}}}
+    assert _is_bakery(feature) is True
+
+
+def test_is_bakery_por_nombre():
+    feature = {"properties": {"name": "Horno Nueva Florida", "datasource": {"raw": {}}}}
+    assert _is_bakery(feature) is True
+
+
+def test_cafe_no_es_bakery():
+    feature = {"properties": {"name": "Utopía", "datasource": {"raw": {"cuisine": "coffee_shop"}}}}
+    assert _is_bakery(feature) is False

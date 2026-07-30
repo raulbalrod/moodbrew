@@ -9,8 +9,9 @@ from app.services.maps_client import fetch_opening_hours, geocode, is_open_now
 
 _RADIUS_STEPS_M = [0, 1000, 4000]
 _MAX_RADIUS_M = 8000
-_MIN_CANDIDATES = 3
-_VALIDATE_TOP = 5
+_MIN_CANDIDATES = 5
+_VALIDATE_TOP = 8
+_INGEST_RADIUS_M = 5000
 
 
 async def _progressive_search(
@@ -30,12 +31,31 @@ async def _progressive_search(
     return nearby, radius
 
 
+async def _db_search(
+    session: AsyncSession, lat: float, lon: float, intent: IntentProfile
+) -> tuple[list[tuple[CoffeeShopModel, float]], int]:
+    """Busca en la BD: ceñido al radio base y, si hay pocos, con ensanche progresivo."""
+    nearby = await find_nearby(session, lat, lon, intent.radius_m, needs_wifi=intent.needs_wifi)
+    radius = intent.radius_m
+    if len(nearby) < _MIN_CANDIDATES:
+        nearby, radius = await _progressive_search(session, lat, lon, intent)
+    return nearby, radius
+
+
+async def _safe_ingest(session: AsyncSession, lat: float, lon: float) -> None:
+    """Ingesta una zona ancha; degradado elegante si Geoapify falla."""
+    try:
+        await ingest_area(session, lat, lon, radius_m=_INGEST_RADIUS_M, limit=50)
+    except Exception:
+        pass
+
+
 async def search(session: AsyncSession, intent: IntentProfile) -> SearchResult:
     """Agente de busqueda y validacion.
 
-    geocode(area) -> filtrado en Postgres con radio progresivo. Si la zona no esta
-    en la BD (cache-miss), la trae de Geoapify en caliente y reintenta. Luego valida
-    "abierto ahora" en vivo. Degradado elegante si falta `area` o falla el geocoder.
+    geocode(area) -> filtrado ceñido en Postgres. Si la zona no esta cacheada, la trae
+    de Geoapify (coffee_shop) y reintenta; como ultimo recurso, en zonas mal etiquetadas,
+    amplia a `catering.cafe`. Luego valida "abierto ahora" en vivo. Degradado elegante.
     """
     if not intent.area:
         return SearchResult(candidates=[], radius_m=intent.radius_m)
@@ -45,18 +65,11 @@ async def search(session: AsyncSession, intent: IntentProfile) -> SearchResult:
         return SearchResult(candidates=[], radius_m=intent.radius_m)
     lat, lon = coords
 
-    radius = intent.radius_m
-    nearby = await find_nearby(session, lat, lon, radius, needs_wifi=intent.needs_wifi)
+    nearby, radius = await _db_search(session, lat, lon, intent)
 
     if len(nearby) < _MIN_CANDIDATES:
-        try:
-            await ingest_area(session, lat, lon, radius_m=radius, limit=50)
-        except Exception:
-            pass
-        nearby = await find_nearby(session, lat, lon, radius, needs_wifi=intent.needs_wifi)
-
-    if len(nearby) < _MIN_CANDIDATES:
-        nearby, radius = await _progressive_search(session, lat, lon, intent)
+        await _safe_ingest(session, lat, lon)
+        nearby, radius = await _db_search(session, lat, lon, intent)
 
     candidates: list[CoffeeShopCandidate] = []
     for shop, distance in nearby[:_VALIDATE_TOP]:

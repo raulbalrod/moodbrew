@@ -16,7 +16,9 @@ _SYSTEM_PROMPT = (
     "Eres un extractor de intencion para un recomendador de cafeterias de especialidad. "
     "Devuelve UNICAMENTE los campos del schema, basandote solo en lo que el usuario dice. "
     "No inventes: si un dato no aparece, usa null para `area` y false para `needs_wifi` "
-    "y `open_now`. `area` es la zona, barrio o ciudad que menciona el usuario."
+    "y `open_now`. `area` es la ubicacion MAS ESPECIFICA que menciona el usuario: incluye "
+    "el punto de referencia, monumento, plaza o calle junto con la ciudad si aparece "
+    "(p.ej. 'Giralda, Sevilla' o 'Plaza Mayor, Madrid'), no la reduzcas solo a la ciudad."
 )
 
 
