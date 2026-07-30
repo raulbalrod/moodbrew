@@ -21,6 +21,16 @@ _CHAIN_DENYLIST = {
     "segafredo",
     "tim hortons",
 }
+_BAKERY_NAME_HINTS = (
+    "horno",
+    "panaderia",
+    "panadería",
+    "pasteleria",
+    "pastelería",
+    "confiteria",
+    "confitería",
+    "obrador",
+)
 
 
 class GeoapifyPlace(BaseModel):
@@ -66,8 +76,18 @@ async def search_cafes(
     return [
         _parse_place(feature)
         for feature in response.json().get("features", [])
-        if not _is_commodity_chain(feature)
+        if not _is_commodity_chain(feature) and not _is_bakery(feature)
     ]
+
+
+def _is_bakery(feature: dict) -> bool:
+    """Detecta panaderias/pastelerias (sirven cafe pero no son cafeterias de cafe)."""
+    props = feature.get("properties", {})
+    raw = (props.get("datasource") or {}).get("raw") or {}
+    if str(raw.get("shop", "")).lower() == "bakery":
+        return True
+    name = (props.get("name") or "").lower()
+    return any(hint in name for hint in _BAKERY_NAME_HINTS)
 
 
 def _is_commodity_chain(feature: dict) -> bool:
