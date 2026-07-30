@@ -52,7 +52,7 @@ async def geocode(text: str) -> tuple[float, float] | None:
 async def search_cafes(
     lat: float, lon: float, radius_m: int = 1500, limit: int = 20
 ) -> list[GeoapifyPlace]:
-    """Busca cafeterias alrededor de (lat, lon) via Geoapify Places API."""
+    """Busca cafeterias de especialidad alrededor de (lat, lon) via Geoapify Places API."""
     params = {
         "categories": _CAFE_CATEGORIES,
         "filter": f"circle:{lon},{lat},{radius_m}",
