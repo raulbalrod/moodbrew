@@ -9,7 +9,7 @@ class RecommendationRequest(BaseModel):
 
 
 class Recommendation(BaseModel):
-    """Opcion final razonada que produce el Agente 3."""
+    """Opcion final razonada que produce el agente curador."""
 
     candidate: CoffeeShopCandidate
     reasoning: str
@@ -19,3 +19,5 @@ class RecommendationResponse(BaseModel):
     query: str
     intent: IntentProfile
     recommendations: list[Recommendation]
+    search_radius_m: int | None = None
+    message: str | None = None

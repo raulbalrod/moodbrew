@@ -18,8 +18,15 @@ class CoffeeShop(BaseModel):
 
 
 class CoffeeShopCandidate(BaseModel):
-    """Candidato que emite el Agente 2 tras el filtrado y la validacion en vivo."""
+    """Candidato que emite el agente de busqueda tras el filtrado y la validacion en vivo."""
 
     shop: CoffeeShop
     is_open: bool | None = None
     distance_m: float | None = None
+
+
+class SearchResult(BaseModel):
+    """Salida del agente de busqueda: candidatos y el radio realmente usado."""
+
+    candidates: list[CoffeeShopCandidate]
+    radius_m: int

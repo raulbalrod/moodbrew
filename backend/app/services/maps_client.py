@@ -8,6 +8,19 @@ from app.config import settings
 
 GEOAPIFY_BASE_URL = "https://api.geoapify.com"
 _WIFI_VALUES = {"wlan", "yes", "wifi", "free", "wlan;yes"}
+_CAFE_CATEGORIES = "catering.cafe.coffee_shop"
+_CHAIN_DENYLIST = {
+    "starbucks",
+    "costa coffee",
+    "caffe nero",
+    "caffè nero",
+    "mccafe",
+    "mccafé",
+    "dunkin",
+    "nespresso",
+    "segafredo",
+    "tim hortons",
+}
 
 
 class GeoapifyPlace(BaseModel):
@@ -41,7 +54,7 @@ async def search_cafes(
 ) -> list[GeoapifyPlace]:
     """Busca cafeterias alrededor de (lat, lon) via Geoapify Places API."""
     params = {
-        "categories": "catering.cafe",
+        "categories": _CAFE_CATEGORIES,
         "filter": f"circle:{lon},{lat},{radius_m}",
         "bias": f"proximity:{lon},{lat}",
         "limit": limit,
@@ -50,7 +63,21 @@ async def search_cafes(
     async with httpx.AsyncClient(timeout=15.0) as client:
         response = await client.get(f"{GEOAPIFY_BASE_URL}/v2/places", params=params)
     response.raise_for_status()
-    return [_parse_place(feature) for feature in response.json().get("features", [])]
+    return [
+        _parse_place(feature)
+        for feature in response.json().get("features", [])
+        if not _is_commodity_chain(feature)
+    ]
+
+
+def _is_commodity_chain(feature: dict) -> bool:
+    """Detecta cadenas comerciales (no especialidad) por nombre, brand u operator."""
+    props = feature.get("properties", {})
+    raw = (props.get("datasource") or {}).get("raw") or {}
+    text = " ".join(
+        str(value) for value in (props.get("name"), raw.get("brand"), raw.get("operator")) if value
+    ).lower()
+    return any(chain in text for chain in _CHAIN_DENYLIST)
 
 
 def _parse_place(feature: dict) -> GeoapifyPlace:
