@@ -3,6 +3,7 @@ FROM python:3.13-slim AS base
 WORKDIR /app
 COPY pyproject.toml .
 COPY app.py .
+COPY .streamlit ./.streamlit
 
 # ---------- dev ----------
 FROM base AS dev
