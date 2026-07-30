@@ -2,7 +2,7 @@ from app.schemas.coffee import CoffeeShopCandidate
 from app.schemas.recommendation import Recommendation
 from app.services.llm_client import chat_json
 
-_MAX_OPTIONS = 3
+_MAX_OPTIONS = 5
 
 _CURATION_SCHEMA = {
     "type": "object",
@@ -26,7 +26,8 @@ _CURATION_SCHEMA = {
 
 _SYSTEM_PROMPT = (
     "Eres un barista y guia de cafeterias de especialidad. De la lista de candidatas, elige "
-    "entre 2 y 3 y escribe una recomendacion breve, calida y apetecible que invite a visitarla.\n"
+    "entre 3 y 5 (segun cuantas encajen) y escribe una recomendacion breve, calida y "
+    "apetecible que invite a visitarla.\n"
     "Combina dos ingredientes:\n"
     "1) HECHOS: solo los datos de cada opcion (nombre, distancia, si esta abierta ahora, si "
     "tiene wifi, direccion). La distancia es aproximada y en linea recta desde la ubicacion "

@@ -9,8 +9,8 @@ from app.services.maps_client import fetch_opening_hours, geocode, is_open_now
 
 _RADIUS_STEPS_M = [0, 1000, 4000]
 _MAX_RADIUS_M = 8000
-_MIN_CANDIDATES = 3
-_VALIDATE_TOP = 5
+_MIN_CANDIDATES = 5
+_VALIDATE_TOP = 8
 _INGEST_RADIUS_M = 5000
 
 
