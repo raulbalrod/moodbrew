@@ -14,5 +14,5 @@ class IntentProfile(BaseModel):
     needs_wifi: bool = Field(default=False, description="Prefiere wifi.")
     open_now: bool = Field(default=False, description="Debe estar abierto ahora.")
     radius_m: int = Field(
-        default=1500, ge=100, le=10000, description="Radio de busqueda en metros."
+        default=1000, ge=100, le=10000, description="Radio de busqueda en metros (escala de barrio)."
     )

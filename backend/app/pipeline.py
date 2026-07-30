@@ -6,8 +6,8 @@ from app.agents.search_agent import search
 from app.schemas.recommendation import RecommendationResponse
 
 _NOT_FOUND_MESSAGE = (
-    "No he encontrado cafeterias de especialidad cerca de esa ubicacion. "
-    "Prueba con un sitio mas concreto —una calle, plaza o barrio— para afinar la busqueda."
+    "No he encontrado cafeterías de especialidad cerca de esa ubicación. "
+    "Prueba con un sitio más concreto —una calle, plaza o barrio— para afinar la búsqueda."
 )
 
 
