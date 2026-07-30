@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Float, String
+from sqlalchemy import JSON, Boolean, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -13,8 +13,12 @@ class CoffeeShop(Base):
     city: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     lat: Mapped[float] = mapped_column(Float, nullable=False)
     lon: Mapped[float] = mapped_column(Float, nullable=False)
-    
+
     external_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True, index=True)
 
     opening_hours: Mapped[str | None] = mapped_column(String, nullable=True)
     has_wifi: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_coffee_shop: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+
+    attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    specialty_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)

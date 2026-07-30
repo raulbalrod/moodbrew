@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CoffeeShop(BaseModel):
@@ -15,6 +15,9 @@ class CoffeeShop(BaseModel):
     external_id: str | None = None
     opening_hours: str | None = None
     has_wifi: bool = False
+    is_coffee_shop: bool = False
+    attributes: dict = Field(default_factory=dict)
+    specialty_score: int = 0
 
 
 class CoffeeShopCandidate(BaseModel):
