@@ -26,9 +26,13 @@ def _patch_maps(monkeypatch, opening_hours="24/7", is_open=True):
     async def fake_fetch(external_id):
         return opening_hours
 
+    async def fake_ingest(session, lat, lon, radius_m=1500, limit=50):
+        return 0
+
     monkeypatch.setattr(search_agent, "geocode", fake_geocode)
     monkeypatch.setattr(search_agent, "fetch_opening_hours", fake_fetch)
     monkeypatch.setattr(search_agent, "is_open_now", lambda oh, now=None: is_open)
+    monkeypatch.setattr(search_agent, "ingest_area", fake_ingest)
 
 
 async def test_search_devuelve_candidatos_ordenados(monkeypatch):
@@ -66,6 +70,22 @@ async def test_sin_area_devuelve_vacio(monkeypatch):
         result = await search_agent.search(session, IntentProfile(area=None))
 
     assert result.candidates == []
+
+
+async def test_autoseed_en_cache_miss(monkeypatch):
+    _patch_maps(monkeypatch)
+    Session = await _session_with([])
+
+    async def fake_ingest(session, lat, lon, radius_m=1500, limit=50):
+        session.add(CoffeeShop(name="Nueva", lat=_LAT + 0.001, lon=_LON, external_id="n"))
+        await session.commit()
+        return 1
+
+    monkeypatch.setattr(search_agent, "ingest_area", fake_ingest)
+    async with Session() as session:
+        result = await search_agent.search(session, IntentProfile(area="Centro", radius_m=1500))
+
+    assert [c.shop.name for c in result.candidates] == ["Nueva"]
 
 
 async def test_open_now_descarta_cerrados(monkeypatch):

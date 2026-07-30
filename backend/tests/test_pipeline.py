@@ -48,4 +48,4 @@ async def test_pipeline_sin_resultados_devuelve_mensaje(monkeypatch):
 
     assert response.recommendations == []
     assert response.message is not None
-    assert "ubicacion" in response.message.lower()
+    assert "encontrado" in response.message.lower()

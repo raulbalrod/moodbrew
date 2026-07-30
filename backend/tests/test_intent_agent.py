@@ -13,7 +13,7 @@ async def test_parse_intent_happy(monkeypatch):
     assert result.area == "Malasana"
     assert result.needs_wifi is True
     assert result.open_now is True
-    assert result.radius_m == 1500
+    assert result.radius_m == 1000
 
 
 async def test_parse_intent_fallback(monkeypatch):
