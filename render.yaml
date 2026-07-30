@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: moodbrew-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENVIRONMENT
+        value: prod
+      - key: LLM_BASE_URL
+        value: https://api.cerebras.ai/v1
+      - key: LLM_MODEL
+        value: gpt-oss-120b
+      - key: DATABASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: GEOAPIFY_API_KEY
+        sync: false
+
+  - type: web
+    name: moodbrew-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: BACKEND_URL
+        value: https://moodbrew-api.onrender.com
