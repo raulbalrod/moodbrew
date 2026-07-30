@@ -27,8 +27,14 @@ _CURATION_SCHEMA = {
 _SYSTEM_PROMPT = (
     "Eres un especialista en cafe de especialidad. De la lista de cafeterias candidatas, "
     "elige entre 2 y 3 y explica por que encajan con la peticion del usuario. "
-    "Razona UNICAMENTE con los datos proporcionados (distancia, si esta abierta, wifi, "
-    "direccion): no inventes tueste, sabor, ambiente ni ningun atributo que no aparezca. "
+    "Razona UNICAMENTE con los datos proporcionados de cada opcion: nombre, distancia en "
+    "metros, si esta abierta ahora, si tiene wifi y la direccion EXACTA tal cual aparece. "
+    "Reglas estrictas para no alucinar:\n"
+    "- No afirmes que una cafeteria pertenece a un barrio o zona concreta salvo que ese "
+    "nombre aparezca literalmente en su direccion; no deduzcas el barrio por el codigo "
+    "postal ni por la peticion del usuario.\n"
+    "- No inventes tueste, sabor, ambiente, calidad ni ningun atributo que no este en los datos.\n"
+    "- Si un dato es desconocido (p.ej. horario), dilo; no lo supongas.\n"
     "Tono cercano de especialista, 1-2 frases por opcion. Devuelve los indices elegidos."
 )
 
