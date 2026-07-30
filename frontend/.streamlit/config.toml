@@ -1,0 +1,10 @@
+[theme]
+# Paleta "café de especialidad": espresso, crema y madera cálida.
+primaryColor = "#8B5E34"
+backgroundColor = "#FBF7F0"
+secondaryBackgroundColor = "#F1E7D8"
+textColor = "#3B2F2F"
+font = "sans serif"
+
+[client]
+showErrorDetails = false

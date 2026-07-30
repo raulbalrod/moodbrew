@@ -11,6 +11,12 @@ REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "60"))
 
 _OPEN_BADGE = {True: "🟢 Abierta ahora", False: "🔴 Cerrada ahora"}
 
+_EXAMPLES = [
+    "Café tranquilo con wifi cerca de la Giralda, Sevilla",
+    "Sitio con enchufes para trabajar en Malasaña, Madrid",
+    "Un flat white de especialidad abierto ahora en Gràcia",
+]
+
 st.set_page_config(page_title="MoodBrew", page_icon="☕", layout="centered")
 
 
@@ -22,6 +28,42 @@ def _badges(candidate: dict, shop: dict) -> str:
     if shop.get("has_wifi"):
         parts.append("📶 Wifi")
     return " · ".join(parts)
+
+
+def _intent_pills(intent: dict) -> None:
+    """Devuelve al usuario lo que el sistema entendió de su petición."""
+    if not intent:
+        return
+    chips = []
+    if intent.get("area"):
+        chips.append(f"📍 {intent['area']}")
+    if intent.get("needs_wifi"):
+        chips.append("📶 wifi")
+    if intent.get("open_now"):
+        chips.append("🟢 abierto ahora")
+    if intent.get("radius_m"):
+        chips.append(f"📏 radio ~{intent['radius_m']} m")
+    if not chips:
+        return
+    html = "".join(
+        f"<span style='display:inline-block;background:#F1E7D8;color:#5B4636;"
+        f"border:1px solid #E0D2BC;border-radius:999px;padding:2px 12px;margin:2px 4px 2px 0;"
+        f"font-size:0.85rem;'>{c}</span>"
+        for c in chips
+    )
+    st.markdown(
+        f"<div style='margin:-4px 0 8px'>"
+        f"<span style='color:#8A7A66;font-size:0.8rem'>Entendí que buscas:</span><br>{html}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _maps_url(shop: dict) -> str:
+    lat, lon = shop.get("lat"), shop.get("lon")
+    return (
+        f"https://www.google.com/maps/dir/?api=1"
+        f"&destination={lat},{lon}&travelmode=walking"
+    )
 
 
 def _fetch_recommendations(text: str) -> dict:
@@ -36,24 +78,31 @@ def _fetch_recommendations(text: str) -> dict:
 
 def _render(data: dict) -> None:
     recommendations = data.get("recommendations", [])
+    _intent_pills(data.get("intent", {}))
+
     if not recommendations:
         st.warning(data.get("message") or "No he encontrado cafeterías para esa búsqueda.")
         return
 
     radius = data.get("search_radius_m")
-    resumen = f"{len(recommendations)} recomendaciones"
+    resumen = f"☕ {len(recommendations)} recomendaciones"
     if radius:
         resumen += f" · radio de búsqueda ~{radius} m"
     st.success(resumen)
 
-    for rec in recommendations:
+    for i, rec in enumerate(recommendations, 1):
         shop = rec["candidate"]["shop"]
         with st.container(border=True):
-            st.markdown(f"#### {shop['name']}")
+            header = f"#### {i}. {shop['name']}"
+            if i == 1:
+                header += "  ·  ⭐ Mejor opción"
+            st.markdown(header)
             st.caption(_badges(rec["candidate"], shop))
             if shop.get("address"):
                 st.caption(f"📌 {shop['address']}")
             st.write(rec["reasoning"])
+            if shop.get("lat") is not None and shop.get("lon") is not None:
+                st.link_button("🧭 Cómo llegar", _maps_url(shop), use_container_width=True)
 
 
 st.markdown("# ☕ MoodBrew")
@@ -61,22 +110,40 @@ st.markdown(
     "Recomendador de **cafeterías de especialidad**. Cuéntame dónde estás y qué te apetece."
 )
 
+st.caption("¿No sabes por dónde empezar? Prueba una de estas:")
+example_cols = st.columns(len(_EXAMPLES))
+for col, example in zip(example_cols, _EXAMPLES):
+    if col.button(example, use_container_width=True):
+        st.session_state.query_input = example
+        st.session_state.run_search = True
+        st.rerun()
+
 with st.form("buscar"):
     query = st.text_input(
         "¿Qué buscas?",
+        key="query_input",
         placeholder="p.ej. estoy en la Giralda de Sevilla, un café tranquilo con wifi",
     )
-    submitted = st.form_submit_button("Recomiéndame ☕", type="primary", use_container_width=True)
+    submitted = st.form_submit_button(
+        "Recomiéndame ☕", type="primary", use_container_width=True
+    )
 
-if submitted:
-    if not query.strip():
+run_search = submitted or st.session_state.pop("run_search", False)
+
+if run_search:
+    query = st.session_state.get("query_input", "").strip()
+    if not query:
         st.info("Escribe primero qué te apetece y dónde estás.")
     else:
         try:
-            with st.spinner("Buscando cafeterías de especialidad…"):
+            with st.spinner("Perfilando tu petición y buscando cafeterías de especialidad…"):
                 data = _fetch_recommendations(query)
-        except Exception as exc:
-            st.error(f"No se pudo conectar con el servicio ({BACKEND_URL}). Detalle: {exc}")
+        except httpx.HTTPStatusError as exc:
+            st.error("El servicio ha tenido un problema procesando la búsqueda. Prueba de nuevo.")
+            with st.expander("Detalle técnico"):
+                st.code(f"{exc.response.status_code} · {exc.response.text[:500]}")
+        except httpx.RequestError:
+            st.error("No he podido conectar con el servicio de recomendaciones. ¿Está arrancado el backend?")
         else:
             _render(data)
 
