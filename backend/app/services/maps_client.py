@@ -1,3 +1,6 @@
+import re
+from datetime import datetime
+
 import httpx
 from pydantic import BaseModel
 
@@ -63,3 +66,101 @@ def _parse_place(feature: dict) -> GeoapifyPlace:
         opening_hours=raw.get("opening_hours"),
         has_wifi=str(raw.get("internet_access", "")).lower() in _WIFI_VALUES,
     )
+
+
+async def fetch_opening_hours(external_id: str) -> str | None:
+    """Consulta Place Details de Geoapify y devuelve el `opening_hours` (OSM) si existe.
+
+    Degradado elegante: ante cualquier fallo de red/API devuelve None (horario desconocido).
+    """
+    params = {"id": external_id, "features": "details", "apiKey": settings.geoapify_api_key}
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{GEOAPIFY_BASE_URL}/v2/place-details", params=params)
+        response.raise_for_status()
+    except Exception:
+        return None
+    for feature in response.json().get("features", []):
+        props = feature.get("properties", {})
+        raw = (props.get("datasource") or {}).get("raw") or {}
+        opening_hours = props.get("opening_hours") or raw.get("opening_hours")
+        if opening_hours:
+            return opening_hours
+    return None
+
+
+_WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+_TIME_RANGE = re.compile(r"(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})")
+_DAY_TOKEN = re.compile(r"^(Mo|Tu|We|Th|Fr|Sa|Su)(?:-(Mo|Tu|We|Th|Fr|Sa|Su))?$")
+
+
+def _expand_days(day_spec: str) -> set[str] | None:
+    days: set[str] = set()
+    for token in day_spec.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        match = _DAY_TOKEN.match(token)
+        if not match:
+            return None
+        start = _WEEKDAYS.index(match.group(1))
+        end = _WEEKDAYS.index(match.group(2)) if match.group(2) else start
+        if end >= start:
+            days.update(_WEEKDAYS[start : end + 1])
+        else:  # rango que envuelve la semana, p.ej. Sa-Mo
+            days.update(_WEEKDAYS[start:] + _WEEKDAYS[: end + 1])
+    return days
+
+
+def _eval_rule(rule: str, weekday: str, minutes_now: int) -> bool | None:
+    ranges = _TIME_RANGE.findall(rule)
+    day_part = _TIME_RANGE.sub("", rule)
+    closed = bool(re.search(r"\b(off|closed)\b", day_part, flags=re.I))
+    day_part = re.sub(r"\b(off|closed)\b", "", day_part, flags=re.I).strip()
+
+    if day_part:
+        days = _expand_days(day_part)
+        if days is None:
+            return None
+        if weekday not in days:
+            return None  # la regla no aplica hoy
+    if closed:
+        return False
+    if not ranges:
+        return None
+    for h1, m1, h2, m2 in ranges:
+        start = int(h1) * 60 + int(m1)
+        end = int(h2) * 60 + int(m2)
+        if end <= start:  # cruza medianoche
+            if minutes_now >= start or minutes_now < end:
+                return True
+        elif start <= minutes_now < end:
+            return True
+    return False
+
+
+def is_open_now(opening_hours: str | None, now: datetime | None = None) -> bool | None:
+    """Evalua un `opening_hours` OSM (subconjunto comun) contra `now`.
+
+    Devuelve True/False si puede evaluarlo, o None si falta el dato o no lo entiende.
+    """
+    if not opening_hours:
+        return None
+    text = opening_hours.strip()
+    if text == "24/7":
+        return True
+
+    now = now or datetime.now()
+    weekday = _WEEKDAYS[now.weekday()]
+    minutes_now = now.hour * 60 + now.minute
+
+    parsed_any = False
+    for rule in text.split(";"):
+        result = _eval_rule(rule.strip(), weekday, minutes_now)
+        if result is None:
+            continue
+        parsed_any = True
+        if result:
+            return True
+    return False if parsed_any else None
+
