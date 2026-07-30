@@ -63,6 +63,21 @@ async def test_radio_progresivo_amplia_hasta_encontrar(monkeypatch):
     assert result.radius_m > 1500 
 
 
+async def test_no_ensancha_si_hay_cerca(monkeypatch):
+    _patch_maps(monkeypatch)
+    Session = await _session_with(
+        [
+            CoffeeShop(name="Cerca", lat=_LAT + 0.001, lon=_LON, external_id="cerca"),
+            CoffeeShop(name="Lejos", lat=_LAT + 0.05, lon=_LON, external_id="lejos"),
+        ]
+    )
+    async with Session() as session:
+        result = await search_agent.search(session, IntentProfile(area="Centro", radius_m=1000))
+
+    assert [c.shop.name for c in result.candidates] == ["Cerca"]
+    assert result.radius_m == 1000
+
+
 async def test_sin_area_devuelve_vacio(monkeypatch):
     _patch_maps(monkeypatch)
     Session = await _session_with([CoffeeShop(name="A", lat=_LAT, lon=_LON, external_id="a")])
