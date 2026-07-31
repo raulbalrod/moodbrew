@@ -1,4 +1,5 @@
 import os
+import time
 
 import httpx
 import streamlit as st
@@ -7,7 +8,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
-REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "60"))
+REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "90"))
+
+_WAKEUP_STATUS = {502, 503, 504}
+_MAX_ATTEMPTS = 3
+_RETRY_BACKOFF_S = 3.0
 
 _OPEN_BADGE = {True: "🟢 Abierta ahora", False: "🔴 Cerrada ahora"}
 
@@ -69,13 +74,27 @@ def _maps_url(shop: dict) -> str:
 
 
 def _fetch_recommendations(text: str) -> dict:
-    response = httpx.post(
-        f"{BACKEND_URL}/api/recommendations",
-        json={"text": text},
-        timeout=REQUEST_TIMEOUT,
-    )
-    response.raise_for_status()
-    return response.json()
+    """Llama al backend reintentando si esta despertando del spin-down."""
+    last_exc: httpx.HTTPError | None = None
+    for attempt in range(_MAX_ATTEMPTS):
+        try:
+            response = httpx.post(
+                f"{BACKEND_URL}/api/recommendations",
+                json={"text": text},
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in _WAKEUP_STATUS:
+                raise
+            last_exc = exc
+        except httpx.RequestError as exc:
+            last_exc = exc
+        if attempt < _MAX_ATTEMPTS - 1:
+            time.sleep(_RETRY_BACKOFF_S * (attempt + 1))
+    assert last_exc is not None
+    raise last_exc
 
 
 def _render(data: dict) -> None:
@@ -145,7 +164,10 @@ if run_search:
         st.info("Escribe primero qué te apetece y dónde estás.")
     else:
         try:
-            with st.spinner("Perfilando tu petición y buscando cafeterías de especialidad…"):
+            with st.spinner(
+                "Perfilando tu petición y buscando cafeterías de especialidad… "
+                "(la primera búsqueda puede tardar unos segundos si el servicio estaba en reposo)"
+            ):
                 data = _fetch_recommendations(query)
         except httpx.HTTPStatusError as exc:
             st.error("El servicio ha tenido un problema procesando la búsqueda. Prueba de nuevo.")
