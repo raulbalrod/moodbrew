@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: moodbrew-api
+    name: moodbrew
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    healthCheckPath: /api/health
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     envVars:
       - key: ENVIRONMENT
         value: prod
@@ -19,14 +19,3 @@ services:
         sync: false
       - key: GEOAPIFY_API_KEY
         sync: false
-
-  - type: web
-    name: moodbrew-frontend
-    runtime: docker
-    plan: free
-    region: frankfurt
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContext: ./frontend
-    envVars:
-      - key: BACKEND_URL
-        value: https://moodbrew-api.onrender.com

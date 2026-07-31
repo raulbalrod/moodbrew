@@ -1,29 +1,17 @@
 name: moodbrew
 
 services:
-  backend:
+  app:
     build:
-      context: ../backend
+      context: ..
       dockerfile: Dockerfile
       target: prod
     env_file: ../backend/.env
     ports:
-      - '${BACKEND_PORT:-8000}:8000'
+      - '${FRONTEND_PORT:-8501}:8501'
     depends_on:
       db:
         condition: service_healthy
-
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-      target: prod
-    environment:
-      BACKEND_URL: http://backend:8000
-    ports:
-      - '${FRONTEND_PORT:-8501}:8501'
-    depends_on:
-      - backend
 
   db:
     image: postgres:18

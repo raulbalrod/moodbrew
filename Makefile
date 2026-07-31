@@ -18,10 +18,10 @@ prod:
 	$(COMPOSE) up --build
 
 test:
-	$(DEV) run --rm --build backend pytest
+	$(DEV) run --rm --build -w /srv/backend app python -m pytest
 
 seed:
-	$(DEV) run --rm backend python -m scripts.seed_database $(ARGS)
+	$(DEV) run --rm -w /srv/backend app python -m scripts.seed_database $(ARGS)
 
 down:
 	$(COMPOSE) down

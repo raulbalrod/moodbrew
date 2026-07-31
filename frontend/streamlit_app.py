@@ -1,20 +1,13 @@
-import os
+import asyncio
 import threading
-import time
 
-import httpx
 import streamlit as st
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.db.base import Base
+from app.db.session import SessionLocal, engine
+from app.pipeline import run_pipeline
 
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
-REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "90"))
-
-_WAKEUP_STATUS = {502, 503, 504}
-_WAKE_BUDGET_S = float(os.environ.get("WAKE_BUDGET_S", "150"))
-_RETRY_INTERVAL_S = 5.0
-_WARMUP_TIMEOUT_S = 60.0
+PIPELINE_TIMEOUT_S = 120.0
 
 _OPEN_BADGE = {True: "🟢 Abierta ahora", False: "🔴 Cerrada ahora"}
 
@@ -27,16 +20,27 @@ _EXAMPLES = [
 st.set_page_config(page_title="MoodBrew", page_icon="☕", layout="centered")
 
 
-def _warmup_backend() -> None:
-    try:
-        httpx.get(f"{BACKEND_URL}/api/health", timeout=_WARMUP_TIMEOUT_S)
-    except httpx.HTTPError:
-        pass
+@st.cache_resource
+def _pipeline_loop() -> asyncio.AbstractEventLoop:
+    loop = asyncio.new_event_loop()
+    threading.Thread(target=loop.run_forever, daemon=True).start()
+
+    async def _init_schema() -> None:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    asyncio.run_coroutine_threadsafe(_init_schema(), loop).result(timeout=30)
+    return loop
 
 
-if not st.session_state.get("_warmed"):
-    st.session_state["_warmed"] = True
-    threading.Thread(target=_warmup_backend, daemon=True).start()
+def _fetch_recommendations(text: str) -> dict:
+    async def _run() -> dict:
+        async with SessionLocal() as db:
+            response = await run_pipeline(db, text)
+        return response.model_dump()
+
+    future = asyncio.run_coroutine_threadsafe(_run(), _pipeline_loop())
+    return future.result(timeout=PIPELINE_TIMEOUT_S)
 
 
 def _badges(candidate: dict, shop: dict) -> str:
@@ -52,7 +56,6 @@ def _badges(candidate: dict, shop: dict) -> str:
 
 
 def _intent_pills(intent: dict) -> None:
-    """Devuelve al usuario lo que el sistema entendió de su petición."""
     if not intent:
         return
     chips = []
@@ -85,37 +88,6 @@ def _maps_url(shop: dict) -> str:
         f"https://www.google.com/maps/dir/?api=1"
         f"&destination={lat},{lon}&travelmode=walking"
     )
-
-
-def _fetch_recommendations(text: str) -> dict:
-    """Llama al backend reintentando mientras despierta del spin-down.
-
-    Reintenta durante `_WAKE_BUDGET_S` segundos ante 502/503/504 o errores de
-    conexion (el backend aun arrancando), ya que ese arranque puede superar de
-    largo un unico timeout. Cualquier otro error HTTP (p.ej. 500 real) se
-    propaga de inmediato sin enmascararlo.
-    """
-    deadline = time.monotonic() + _WAKE_BUDGET_S
-    last_exc: httpx.HTTPError | None = None
-    while True:
-        try:
-            response = httpx.post(
-                f"{BACKEND_URL}/api/recommendations",
-                json={"text": text},
-                timeout=REQUEST_TIMEOUT,
-            )
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code not in _WAKEUP_STATUS:
-                raise
-            last_exc = exc
-        except httpx.RequestError as exc:
-            last_exc = exc
-        if time.monotonic() >= deadline:
-            assert last_exc is not None
-            raise last_exc
-        time.sleep(_RETRY_INTERVAL_S)
 
 
 def _render(data: dict) -> None:
@@ -190,12 +162,10 @@ if run_search:
                 "(la primera búsqueda puede tardar unos segundos si el servicio estaba en reposo)"
             ):
                 data = _fetch_recommendations(query)
-        except httpx.HTTPStatusError as exc:
+        except Exception as exc:
             st.error("El servicio ha tenido un problema procesando la búsqueda. Prueba de nuevo.")
             with st.expander("Detalle técnico"):
-                st.code(f"{exc.response.status_code} · {exc.response.text[:500]}")
-        except httpx.RequestError:
-            st.error("No he podido conectar con el servicio de recomendaciones. ¿Está arrancado el backend?")
+                st.code(f"{type(exc).__name__}: {str(exc)[:500]}")
         else:
             _render(data)
 
