@@ -11,8 +11,8 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "90"))
 
 _WAKEUP_STATUS = {502, 503, 504}
-_MAX_ATTEMPTS = 3
-_RETRY_BACKOFF_S = 3.0
+_WAKE_BUDGET_S = float(os.environ.get("WAKE_BUDGET_S", "90"))
+_RETRY_INTERVAL_S = 5.0
 
 _OPEN_BADGE = {True: "🟢 Abierta ahora", False: "🔴 Cerrada ahora"}
 
@@ -74,9 +74,16 @@ def _maps_url(shop: dict) -> str:
 
 
 def _fetch_recommendations(text: str) -> dict:
-    """Llama al backend reintentando si esta despertando del spin-down."""
+    """Llama al backend reintentando mientras despierta del spin-down.
+
+    Reintenta durante `_WAKE_BUDGET_S` segundos ante 502/503/504 o errores de
+    conexion (el backend aun arrancando), ya que ese arranque puede superar de
+    largo un unico timeout. Cualquier otro error HTTP (p.ej. 500 real) se
+    propaga de inmediato sin enmascararlo.
+    """
+    deadline = time.monotonic() + _WAKE_BUDGET_S
     last_exc: httpx.HTTPError | None = None
-    for attempt in range(_MAX_ATTEMPTS):
+    while True:
         try:
             response = httpx.post(
                 f"{BACKEND_URL}/api/recommendations",
@@ -91,10 +98,10 @@ def _fetch_recommendations(text: str) -> dict:
             last_exc = exc
         except httpx.RequestError as exc:
             last_exc = exc
-        if attempt < _MAX_ATTEMPTS - 1:
-            time.sleep(_RETRY_BACKOFF_S * (attempt + 1))
-    assert last_exc is not None
-    raise last_exc
+        if time.monotonic() >= deadline:
+            assert last_exc is not None
+            raise last_exc
+        time.sleep(_RETRY_INTERVAL_S)
 
 
 def _render(data: dict) -> None:
