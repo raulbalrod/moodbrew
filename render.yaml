@@ -3,7 +3,6 @@ services:
     name: moodbrew-api
     runtime: docker
     plan: free
-    region: frankfurt
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
