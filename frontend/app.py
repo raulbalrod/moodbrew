@@ -1,4 +1,5 @@
 import os
+import threading
 import time
 
 import httpx
@@ -11,8 +12,9 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "90"))
 
 _WAKEUP_STATUS = {502, 503, 504}
-_WAKE_BUDGET_S = float(os.environ.get("WAKE_BUDGET_S", "90"))
+_WAKE_BUDGET_S = float(os.environ.get("WAKE_BUDGET_S", "150"))
 _RETRY_INTERVAL_S = 5.0
+_WARMUP_TIMEOUT_S = 60.0
 
 _OPEN_BADGE = {True: "🟢 Abierta ahora", False: "🔴 Cerrada ahora"}
 
@@ -23,6 +25,18 @@ _EXAMPLES = [
 ]
 
 st.set_page_config(page_title="MoodBrew", page_icon="☕", layout="centered")
+
+
+def _warmup_backend() -> None:
+    try:
+        httpx.get(f"{BACKEND_URL}/api/health", timeout=_WARMUP_TIMEOUT_S)
+    except httpx.HTTPError:
+        pass
+
+
+if not st.session_state.get("_warmed"):
+    st.session_state["_warmed"] = True
+    threading.Thread(target=_warmup_backend, daemon=True).start()
 
 
 def _badges(candidate: dict, shop: dict) -> str:
