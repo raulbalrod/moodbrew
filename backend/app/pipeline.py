@@ -14,17 +14,18 @@ _NOT_FOUND_MESSAGE = (
 async def run_pipeline(session: AsyncSession, text: str) -> RecommendationResponse:
     """Orquesta la tuberia secuencial: intencion -> busqueda -> curacion."""
     intent = await parse_intent(text)
-    result = await search(session, intent)
+    search_result = await search(session, intent)
 
-    if not result.candidates:
+    if not search_result.candidates:
         return RecommendationResponse(
             query=text, intent=intent, recommendations=[], message=_NOT_FOUND_MESSAGE
         )
 
-    recommendations = await curate(text, result.candidates)
+    curation = await curate(text, search_result.candidates)
     return RecommendationResponse(
         query=text,
         intent=intent,
-        recommendations=recommendations,
-        search_radius_m=result.radius_m,
+        recommendations=curation.curated,
+        nearby=curation.nearby,
+        search_radius_m=search_result.radius_m,
     )

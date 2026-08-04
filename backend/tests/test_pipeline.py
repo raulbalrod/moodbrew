@@ -1,7 +1,7 @@
 from app import pipeline
 from app.schemas.coffee import CoffeeShop, CoffeeShopCandidate, SearchResult
 from app.schemas.intent import IntentProfile
-from app.schemas.recommendation import Recommendation
+from app.schemas.recommendation import CurationResult, Recommendation
 
 
 def _candidate(name):
@@ -13,10 +13,13 @@ async def test_pipeline_happy(monkeypatch):
         return IntentProfile(area="Alfalfa", radius_m=1500)
 
     async def fake_search(session, intent):
-        return SearchResult(candidates=[_candidate("Ozik")], radius_m=2500)
+        return SearchResult(candidates=[_candidate("Ozik"), _candidate("Nolan")], radius_m=2500)
 
     async def fake_curate(text, candidates):
-        return [Recommendation(candidate=candidates[0], reasoning="La mejor por cercania.")]
+        return CurationResult(
+            curated=[Recommendation(candidate=candidates[0], reasoning="La mejor por cercania.")],
+            nearby=[Recommendation(candidate=candidates[1], reasoning="Tambien cerca.")],
+        )
 
     monkeypatch.setattr(pipeline, "parse_intent", fake_parse_intent)
     monkeypatch.setattr(pipeline, "search", fake_search)
@@ -25,7 +28,8 @@ async def test_pipeline_happy(monkeypatch):
     response = await pipeline.run_pipeline(None, "cafe en Alfalfa")
 
     assert response.query == "cafe en Alfalfa"
-    assert len(response.recommendations) == 1
+    assert [r.candidate.shop.name for r in response.recommendations] == ["Ozik"]
+    assert [r.candidate.shop.name for r in response.nearby] == ["Nolan"]
     assert response.search_radius_m == 2500
     assert response.message is None
 

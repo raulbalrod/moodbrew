@@ -33,6 +33,7 @@ def test_recommendations_endpoint(monkeypatch):
     assert body["query"] == "cafe en Alfalfa"
     assert body["search_radius_m"] == 1500
     assert body["message"] == "ok"
+    assert body["nearby"] == []
 
 
 def test_recommendations_requiere_text():
