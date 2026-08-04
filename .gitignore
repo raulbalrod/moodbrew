@@ -12,3 +12,7 @@ venv/
 !.env.example
 
 .DS_Store
+
+# claude
+CLAUDE.md
+/docs/claude
