@@ -39,3 +39,29 @@ def test_recommendations_requiere_text():
     client = TestClient(app)
     response = client.post("/api/recommendations", json={})
     assert response.status_code == 422
+
+
+def test_recommendations_rate_limited(monkeypatch):
+    """El endpoint que dispara el LLM corta con 429 al superar el limite (salvaguarda de coste)."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "rate_limit", "2/minute")
+
+    async def fake_run_pipeline(session, text):
+        return RecommendationResponse(
+            query=text, intent=IntentProfile(), recommendations=[]
+        )
+
+    monkeypatch.setattr("app.api.recommendations.run_pipeline", fake_run_pipeline)
+    app.dependency_overrides[get_db] = _fake_db
+    try:
+        client = TestClient(app)
+        codes = [
+            client.post("/api/recommendations", json={"text": "cafe"}).status_code
+            for _ in range(3)
+        ]
+    finally:
+        app.dependency_overrides.clear()
+
+    assert codes[:2] == [200, 200]
+    assert codes[2] == 429
