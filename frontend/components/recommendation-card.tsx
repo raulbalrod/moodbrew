@@ -2,6 +2,7 @@ import { Coffee, MapPin, Navigation, Sparkles, Wifi } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { Recommendation } from "@/lib/types";
 
 function directionsUrl(lat: number, lon: number) {
@@ -10,19 +11,25 @@ function directionsUrl(lat: number, lon: number) {
 
 type Props = {
   recommendation: Recommendation;
-  rank: number;
+  rank?: number;
   highlight?: boolean;
+  active?: boolean;
 };
 
-export function RecommendationCard({ recommendation, rank, highlight }: Props) {
+export function RecommendationCard({
+  recommendation,
+  rank,
+  highlight,
+  active,
+}: Props) {
   const { candidate, reasoning } = recommendation;
   const { shop } = candidate;
 
   return (
-    <Card>
+    <Card className={cn("transition-shadow", active && "ring-2 ring-primary")}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <span className="text-muted-foreground">{rank}.</span>
+          {rank != null && <span className="text-muted-foreground">{rank}.</span>}
           <span className="flex-1">{shop.name}</span>
           {highlight && (
             <Badge>

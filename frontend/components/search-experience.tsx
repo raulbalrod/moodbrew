@@ -2,8 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { IntentPills } from "@/components/intent-pills";
-import { RecommendationCard } from "@/components/recommendation-card";
+import { ResultsView } from "@/components/results-view";
 import { SearchForm } from "@/components/search-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -60,21 +59,23 @@ export function SearchExperience() {
   }
 
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-6">
-      <SearchForm
-        value={query}
-        onChange={setQuery}
-        onSearch={handleSearch}
-        loading={status === "loading"}
-      />
+    <div className="flex w-full flex-col gap-6">
+      <div className="max-w-2xl">
+        <SearchForm
+          value={query}
+          onChange={setQuery}
+          onSearch={handleSearch}
+          loading={status === "loading"}
+        />
+      </div>
 
       {status === "loading" && <LoadingState waking={waking} />}
       {status === "error" && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p className="max-w-2xl rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           No se pudo completar la búsqueda. Revisa la conexión y vuelve a intentarlo.
         </p>
       )}
-      {status === "done" && data && <Results data={data} />}
+      {status === "done" && data && <ResultsView data={data} />}
     </div>
   );
 }
@@ -97,39 +98,6 @@ function LoadingState({ waking }: { waking: boolean }) {
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-8 w-36" />
         </div>
-      ))}
-    </div>
-  );
-}
-
-function Results({ data }: { data: RecommendationResponse }) {
-  const { recommendations } = data;
-
-  if (recommendations.length === 0) {
-    return (
-      <p className="rounded-lg border border-border bg-secondary/50 px-4 py-3 text-sm text-secondary-foreground">
-        {data.message ?? "No he encontrado cafeterías para esa búsqueda."}
-      </p>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <IntentPills intent={data.intent} />
-      <p className="text-sm text-muted-foreground">
-        ☕ {recommendations.length}{" "}
-        {recommendations.length === 1 ? "recomendación" : "recomendaciones"}
-        {data.search_radius_m
-          ? ` · radio de búsqueda ~${data.search_radius_m} m`
-          : ""}
-      </p>
-      {recommendations.map((recommendation, index) => (
-        <RecommendationCard
-          key={`${recommendation.candidate.shop.id}-${index}`}
-          recommendation={recommendation}
-          rank={index + 1}
-          highlight={index === 0}
-        />
       ))}
     </div>
   );

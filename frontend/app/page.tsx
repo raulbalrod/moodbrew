@@ -3,7 +3,7 @@ import { SearchExperience } from "@/components/search-experience";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-12 sm:py-16">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-12 sm:py-16">
       <header className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Coffee className="size-7 text-primary" />
