@@ -23,39 +23,47 @@ Igualar la calidad de Google requeriria una fuente con ratings de usuarios (Goog
 Places / Foursquare, ambas de pago) o un directorio de especialidad curado. Queda
 como trabajo futuro (fase de value-add).
 
-## Estructura
+## Arquitectura
+
+Dos servicios: **frontend Next.js @ Vercel** · **API FastAPI @ Render** · **DB Postgres
+@ Neon**. El navegador consume la API por HTTPS (`NEXT_PUBLIC_API_BASE_URL`).
 
 ```text
 moodbrew/
-├── backend/
+├── backend/                   # API FastAPI (pipeline multiagente)
 │   ├── app/
-│   │   ├── main.py            # Inicializa FastAPI y registra rutas (/api)
+│   │   ├── main.py            # FastAPI + CORS + rate limit; crea el schema en el lifespan
 │   │   ├── config/            # Settings via pydantic-settings
-│   │   ├── api/               # Routers (health, y futuros endpoints)
+│   │   ├── api/               # Routers (/api/health, /api/recommendations)
 │   │   ├── schemas/           # Modelos Pydantic de entrada/salida
 │   │   ├── db/                # Base declarativa y sesion async (SQLAlchemy 2.0)
-│   │   ├── agents/            # Agentes 1, 2 y 3 (pendiente)
-│   │   └── services/          # Clientes LLM y Google Maps (pendiente)
-│   ├── tests/
-│   ├── Dockerfile
-│   └── pyproject.toml
+│   │   ├── agents/            # intent → search → curator
+│   │   └── services/          # Clientes LLM (Cerebras) y mapas (Geoapify)
+│   └── tests/
+├── frontend/                  # Next.js 16 + React 19 + Tailwind v4 + shadcn/ui (pnpm)
 ├── docker/
-│   ├── docker-compose.yml     # backend + postgres
+│   ├── docker-compose.yml     # API + postgres
 │   └── docker-compose.dev.yml # override con reload y volumenes
+├── Dockerfile                 # imagen de la API (uvicorn)
 └── Makefile
 ```
 
 ## Puesta en marcha
 
+Backend (Docker):
+
 ```bash
 cp backend/.env.example backend/.env   # rellena claves y credenciales
-make dev                               # levanta backend + postgres con reload
+make dev                               # API FastAPI en :8000 con reload (+ postgres)
 make test                              # corre los tests en el contenedor
+curl http://localhost:8000/api/health  # {"status":"ok",...}
 ```
 
-Comprobacion rapida:
+Frontend (pnpm, fuera de Docker):
 
 ```bash
-curl http://localhost:8000/api/health
-# {"status":"ok","app_name":"moodbrew","environment":"dev"}
+cd frontend
+cp .env.example .env.local             # NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+pnpm install
+pnpm dev                               # http://localhost:3000
 ```
