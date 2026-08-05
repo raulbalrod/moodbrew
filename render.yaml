@@ -6,6 +6,7 @@ services:
     region: frankfurt
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    healthCheckPath: /api/health
     envVars:
       - key: ENVIRONMENT
         value: prod
@@ -13,6 +14,8 @@ services:
         value: https://api.cerebras.ai/v1
       - key: LLM_MODEL
         value: gpt-oss-120b
+      - key: CORS_ORIGINS
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: LLM_API_KEY
