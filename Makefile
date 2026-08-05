@@ -1,10 +1,11 @@
-.PHONY: help dev prod test seed down down-v logs
+.PHONY: help dev api prod test seed down down-v logs
 
 COMPOSE = docker compose --env-file backend/.env -f docker/docker-compose.yml
 DEV = $(COMPOSE) -f docker/docker-compose.dev.yml
 
 help:
 	@echo "make dev    - levanta desarrollo con reload"
+	@echo "make api    - levanta la API FastAPI en :8000 (para el front Next)"
 	@echo "make prod   - levanta la imagen de produccion"
 	@echo "make test   - corre los tests en el contenedor dev"
 	@echo "make seed   - puebla coffee_shops desde Geoapify (ARGS opcional)"
@@ -13,6 +14,9 @@ help:
 
 dev:
 	$(DEV) up --build -d
+
+api:
+	$(DEV) up --build -d api
 
 prod:
 	$(COMPOSE) up --build
