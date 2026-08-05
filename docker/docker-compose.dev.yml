@@ -6,4 +6,3 @@ services:
       target: dev
     volumes:
       - ../backend:/srv/backend
-      - ../frontend/streamlit_app.py:/srv/streamlit_app.py

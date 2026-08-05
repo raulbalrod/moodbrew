@@ -4,8 +4,8 @@ COMPOSE = docker compose --env-file backend/.env -f docker/docker-compose.yml
 DEV = $(COMPOSE) -f docker/docker-compose.dev.yml
 
 help:
-	@echo "make dev    - levanta desarrollo con reload"
-	@echo "make prod   - levanta la imagen de produccion"
+	@echo "make dev    - levanta la API FastAPI en :8000 con reload (+ postgres)"
+	@echo "make prod   - levanta la imagen de produccion (API uvicorn)"
 	@echo "make test   - corre los tests en el contenedor dev"
 	@echo "make seed   - puebla coffee_shops desde Geoapify (ARGS opcional)"
 	@echo "make down   - para y limpia"

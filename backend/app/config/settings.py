@@ -33,6 +33,14 @@ class Settings(BaseSettings):
 
     geoapify_api_key: str = ""
 
+    cors_origins: str = "http://localhost:3000"
+
+    rate_limit: str = "10/minute;100/hour"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
     @computed_field
     @property
     def database_url(self) -> str:

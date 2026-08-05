@@ -8,7 +8,7 @@ services:
       target: prod
     env_file: ../backend/.env
     ports:
-      - '${FRONTEND_PORT:-8501}:8501'
+      - '${BACKEND_PORT:-8000}:8000'
     depends_on:
       db:
         condition: service_healthy
